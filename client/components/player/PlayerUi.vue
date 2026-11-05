@@ -8,6 +8,10 @@
           <controls-volume-control ref="volumeControl" v-model="volume" @input="setVolume" class="mx-2 hidden sm:block" />
         </ui-tooltip>
 
+        <ui-tooltip v-if="volumeBoost !== null" direction="bottom" :text="$strings.LabelVolumeBoost">
+          <controls-volume-boost-control :value="volumeBoost" @input="$emit('setVolumeBoost', $event)" class="mx-1 lg:mx-2" />
+        </ui-tooltip>
+
         <ui-tooltip v-if="!hideSleepTimer" direction="top" :text="$strings.LabelSleepTimer">
           <button :aria-label="$strings.LabelSleepTimer" class="text-gray-300 hover:text-white mx-1 lg:mx-2" @mousedown.prevent @mouseup.prevent @click.stop="$emit('showSleepTimer')">
             <span v-if="!sleepTimerSet" class="material-symbols text-2xl">snooze</span>
@@ -89,7 +93,12 @@ export default {
     isPodcast: Boolean,
     hideBookmarks: Boolean,
     hideSleepTimer: Boolean,
-    hasNextItemInQueue: Boolean
+    hasNextItemInQueue: Boolean,
+    // In dB. Null hides the control, for players that can't boost
+    volumeBoost: {
+      type: Number,
+      default: null
+    }
   },
   data() {
     return {

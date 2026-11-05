@@ -50,6 +50,9 @@ export default class PlayerHandler {
   get jumpBackwardAmount() {
     return this.ctx.$store.getters['user/getUserSetting']('jumpBackwardAmount')
   }
+  get volumeBoostStorageKey() {
+    return `volumeBoost-${this.libraryItemId}`
+  }
 
   setSessionId(sessionId) {
     this.currentSessionId = sessionId
@@ -232,6 +235,7 @@ export default class PlayerHandler {
     }
 
     this.player.set(this.libraryItem, audioTracks, this.isHlsTranscode, this.startTime, this.playWhenReady)
+    this.applyVolumeBoost(Number(localStorage.getItem(this.volumeBoostStorageKey)) || 0)
 
     // browser media session api
     this.ctx.setMediaSession()
@@ -375,6 +379,18 @@ export default class PlayerHandler {
   setVolume(volume) {
     if (!this.player) return
     this.player.setVolume(volume)
+  }
+
+  setVolumeBoost(boostDb) {
+    if (boostDb) localStorage.setItem(this.volumeBoostStorageKey, boostDb)
+    else localStorage.removeItem(this.volumeBoostStorageKey)
+    this.applyVolumeBoost(boostDb)
+  }
+
+  applyVolumeBoost(boostDb) {
+    this.ctx.volumeBoost = boostDb
+    // The boost happens in this browser, so it can't reach a cast device
+    if (this.player instanceof LocalAudioPlayer) this.player.setVolumeBoost(boostDb)
   }
 
   setPlaybackRate(playbackRate) {

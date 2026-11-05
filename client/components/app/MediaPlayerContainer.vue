@@ -42,10 +42,12 @@
       :sleep-timer-type="sleepTimerType"
       :is-podcast="isPodcast"
       :hasNextItemInQueue="hasNextItemInQueue"
+      :volume-boost="isCasting ? null : volumeBoost"
       @playPause="playPause"
       @jumpForward="jumpForward"
       @jumpBackward="jumpBackward"
       @setVolume="setVolume"
+      @setVolumeBoost="setVolumeBoost"
       @setPlaybackRate="setPlaybackRate"
       @seek="seek"
       @nextItemInQueue="playNextItemInQueue"
@@ -84,6 +86,7 @@ export default {
       sleepTimer: null,
       displayTitle: null,
       currentPlaybackRate: 1,
+      volumeBoost: 0,
       syncFailedToast: null,
       coverAspectRatio: 1,
       lastChapterId: null
@@ -92,6 +95,9 @@ export default {
   computed: {
     isSquareCover() {
       return this.coverAspectRatio === 1
+    },
+    isCasting() {
+      return this.$store.state.globals.isCasting
     },
     isMobile() {
       return this.$store.state.globals.isMobile
@@ -287,6 +293,9 @@ export default {
     },
     setVolume(volume) {
       this.playerHandler.setVolume(volume)
+    },
+    setVolumeBoost(boostDb) {
+      this.playerHandler.setVolumeBoost(boostDb)
     },
     setPlaybackRate(playbackRate) {
       this.currentPlaybackRate = playbackRate

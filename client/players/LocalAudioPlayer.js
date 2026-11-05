@@ -19,6 +19,10 @@ export default class LocalAudioPlayer extends EventEmitter {
     this.playWhenReady = false
     this.defaultPlaybackRate = 1
 
+    this.audioContext = null
+    this.boostSourceNode = null
+    this.boostGainNode = null
+
     this.playableMimeTypes = []
 
     this.initialize()
@@ -117,6 +121,10 @@ export default class LocalAudioPlayer extends EventEmitter {
     this.destroyHlsInstance()
     if (this.player) {
       this.player.remove()
+    }
+    if (this.audioContext) {
+      this.audioContext.close()
+      this.audioContext = null
     }
   }
 
@@ -244,6 +252,8 @@ export default class LocalAudioPlayer extends EventEmitter {
   }
 
   play() {
+    // Browsers keep an audio context suspended until the user interacts with the page
+    if (this.audioContext) this.audioContext.resume()
     this.playWhenReady = true
     if (this.player) this.player.play()
   }
@@ -304,6 +314,48 @@ export default class LocalAudioPlayer extends EventEmitter {
   setVolume(volume) {
     if (!this.player) return
     this.player.volume = volume
+  }
+
+  /**
+   * Boosting routes the audio element through Web Audio, which can't be undone for that element.
+   * So nothing changes until a boost is used, and books that are never boosted keep playing
+   * straight from the element.
+   */
+  setupVolumeBoost() {
+    this.audioContext = new AudioContext()
+    this.boostSourceNode = this.audioContext.createMediaElementSource(this.player)
+    this.boostGainNode = this.audioContext.createGain()
+
+    // Used as a limiter, to hold the peaks of speech down instead of clipping them
+    const limiter = this.audioContext.createDynamicsCompressor()
+    limiter.threshold.value = -3
+    limiter.knee.value = 0
+    limiter.ratio.value = 20
+    limiter.attack.value = 0.002
+    limiter.release.value = 0.15
+
+    // A compressor adds its own makeup gain, about 1.7 dB with these settings. Taking that back out
+    // keeps the boost true to its label, with enough headroom to keep the limited peaks under 0 dB
+    const limiterTrim = this.audioContext.createGain()
+    limiterTrim.gain.value = 10 ** (-3 / 20)
+
+    this.boostGainNode.connect(limiter)
+    limiter.connect(limiterTrim)
+    limiterTrim.connect(this.audioContext.destination)
+  }
+
+  setVolumeBoost(boostDb) {
+    if (!this.player) return
+    if (!this.audioContext) {
+      if (!boostDb) return
+      this.setupVolumeBoost()
+    }
+
+    this.boostSourceNode.disconnect()
+    // At 0 dB the limiter is bypassed, since it would still reduce peaks that weren't boosted
+    this.boostSourceNode.connect(boostDb ? this.boostGainNode : this.audioContext.destination)
+    this.boostGainNode.gain.setTargetAtTime(10 ** (boostDb / 20), this.audioContext.currentTime, 0.02)
+    this.audioContext.resume()
   }
 
   // Utils
